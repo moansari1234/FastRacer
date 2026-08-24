@@ -234,7 +234,7 @@ export class HUD {
     c.lineTo(cx + Math.cos(na) * (r - 16), cy + Math.sin(na) * (r - 16));
     c.stroke();
     c.fillStyle = "#ffffff";
-    c.font = "bold 30px Arial";
+    c.font = "italic 900 30px Orbitron, Arial";
     c.textAlign = "center";
     c.fillText(String(Math.round(s.speed)), cx, cy - 8);
     c.font = "11px Arial";

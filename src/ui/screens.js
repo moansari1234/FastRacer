@@ -69,7 +69,8 @@ export class Screens {
     this._set(`
       <div class="screen screen-main">
         <div class="logo">
-          <h1><em>NITRO</em> APEX</h1>
+          <p class="boot-kicker">ARCADE RACING</p>
+          <h1><em>NITRO</em> <span>APEX</span></h1>
           <p class="tag">LEGENDS OF ARCADE SPEED</p>
         </div>
         <div class="main-stats">

@@ -7,6 +7,8 @@
 <meta name="theme-color" content="#00e5ff">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="preload" href="./assets/fonts/orbitron-900.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./assets/fonts/rajdhani-600.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="./css/style.css">
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.js" } }
@@ -18,10 +20,11 @@
 <div id="hud"></div>
 <div id="boot">
   <div class="boot-inner">
-    <h1><em>NITRO</em> APEX</h1>
-    <p>LEGENDS OF ARCADE SPEED</p>
-    <button id="boot-btn">TAP / CLICK TO START</button>
-    <p class="hint">WASD / Arrows drive &middot; SPACE drift &middot; N or SHIFT nitro &middot; Q shockwave &middot; C camera &middot; R reset &middot; ESC pause</p>
+    <p class="boot-kicker">ARCADE RACING</p>
+    <h1><em>NITRO</em> <span>APEX</span></h1>
+    <p class="boot-sub">LEGENDS OF ARCADE SPEED</p>
+    <button id="boot-btn">START ENGINE</button>
+    <p class="hint"><b>W A S D</b> drive <b>SPACE</b> drift <b>N</b> nitro &times;2 perfect <b>Q</b> shockwave <b>C</b> camera <b>R</b> reset <b>ESC</b> pause</p>
   </div>
 </div>
 <script type="module" src="./src/main.js"></script>
