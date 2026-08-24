@@ -81,6 +81,13 @@ class Game {
     boot.addEventListener("click", startFn);
 
     if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+      let reloading = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!reloading) {
+          reloading = true;
+          location.reload();
+        }
+      });
       navigator.serviceWorker.register("./sw.js").catch(() => {});
     }
 

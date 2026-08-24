@@ -1,4 +1,4 @@
-const CACHE = "nitroapex-v1";
+const CACHE = "nitroapex-v2";
 /*PRECACHE_START*/
 const PRECACHE = [
   "./",
