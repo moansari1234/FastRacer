@@ -80,6 +80,10 @@ class Game {
     };
     boot.addEventListener("click", startFn);
 
+    if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    }
+
     this.clock = new THREE.Clock();
     this._loop();
   }

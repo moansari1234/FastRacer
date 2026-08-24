@@ -3,6 +3,9 @@ import { CARS, CAR_MAP, derived, rating } from "../src/data/cars.js";
 import { TRACKS, TRACK_MAP, CAREER, DIFFICULTIES } from "../src/data/tracks.js";
 import { buildTrackData } from "../src/world/trackData.js";
 import { VehicleCore, resolveCarCollision } from "../src/physics/vehicleCore.js";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 let pass = 0;
 let fail = 0;
@@ -170,6 +173,31 @@ t("car collision impulse", () => {
   const hit = resolveCarCollision(a, b);
   ok(hit, "hit detected");
   ok(a.vx < 29.99 && b.vx > 0, "momentum transferred");
+});
+
+t("service worker precache matches disk", () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const swText = readFileSync(join(root, "sw.js"), "utf8");
+  const m = swText.match(/PRECACHE_START([\s\S]*?)PRECACHE_END/);
+  ok(m, "precache block found");
+  const list = eval(m[1].match(/\[[\s\S]*\]/)[0]);
+  ok(list.length >= 20, `precache has entries: ${list.length}`);
+  for (const entry of list) {
+    const p = join(root, entry.replace(/^\.\//, ""));
+    ok(existsSync(p), `missing from disk: ${entry}`);
+  }
+  const required = ["./index.html", "./css/style.css", "./vendor/three.module.js", "./src/main.js", "./manifest.webmanifest", "./icon.svg"];
+  for (const req of required) ok(list.includes(req), `precache missing ${req}`);
+  const srcDir = join(root, "src");
+  const walk = (d) =>
+    readdirSync(d, { withFileTypes: true }).flatMap((e) => {
+      const full = join(d, e.name);
+      return e.isDirectory() ? walk(full) : e.name.endsWith(".js") ? [full] : [];
+    });
+  for (const file of walk(srcDir)) {
+    const rel = "./" + file.slice(root.length + 1).replace(/\\/g, "/");
+    ok(list.includes(rel), `source not precached: ${rel}`);
+  }
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
