@@ -47,10 +47,10 @@ class Game {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._applyPixelRatio();
     this.pipeline = new RenderPipeline(this.renderer, this.quality);
-    initEnvironment(this.renderer, this.menuScene);
-    this.menuScene.environmentIntensity = 0.7;
 
     this.menuScene = this._buildMenuScene();
+    initEnvironment(this.renderer, this.menuScene);
+    this.menuScene.environmentIntensity = 0.7;
     this.menuCam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
     this.menuCam.position.set(4.4, 2.0, 5.2);
     this.menuCam.lookAt(0, 0.6, 0);

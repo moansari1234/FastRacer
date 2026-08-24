@@ -7,5 +7,8 @@
     "dev": "python3 -m http.server 8000",
     "dev:node": "npx --yes serve -l 8000 .",
     "test": "node --import ./tests/register.mjs tests/run.mjs && node --import ./tests/register.mjs tests/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
   }
 }
