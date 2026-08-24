@@ -106,7 +106,7 @@ export class AIDriver {
 
     v.input.throttle = throttle;
     v.input.brake = brake;
-    v.input.steer = damp(v.input.steer, steerTarget, 12, dt);
+    v.input.steer = damp(v.input.steer, -steerTarget, 12, dt);
     v.input.drift = v.grounded && Math.abs(kMax) > 0.02 && speed > 24 && Math.abs(steerTarget) > 0.4 && this.p.skill > 0.85;
   }
 }

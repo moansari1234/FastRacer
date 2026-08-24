@@ -107,7 +107,7 @@ export class VehicleCore {
 
     let throttle = inp.throttle;
     let brake = inp.brake;
-    let steerIn = clamp(inp.steer, -1, 1);
+    let steerIn = clamp(-inp.steer, -1, 1);
     if (this.spinT > 0) {
       this.spinT -= dt;
       throttle = 0;

@@ -634,7 +634,7 @@ export class Race {
       const steerTo = clamp(Math.atan2(tx * v.rightX + tz * v.rightZ, tx * v.fwdX + tz * v.fwdZ) * 1.8, -1, 1);
       v.input.throttle = 0.45;
       v.input.brake = 0;
-      v.input.steer = steerTo;
+      v.input.steer = -steerTo;
       v.input.drift = false;
       return;
     }
@@ -655,7 +655,7 @@ export class Race {
       const cornerSpeed = kMax > 0.001 ? Math.sqrt(11 / kMax) : 999;
       v.input.throttle = inp.brake ? 0 : 1;
       v.input.brake = Math.abs(v.speed) > cornerSpeed * 1.05 ? 0.7 : 0;
-      v.input.steer = targetSteer;
+      v.input.steer = -targetSteer;
       v.input.drift = kMax > 0.02 && Math.abs(v.speed) > 23;
     } else {
       v.input.throttle = inp.throttle;

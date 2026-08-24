@@ -102,7 +102,7 @@ t("vehicle accelerates and follows track", () => {
     const ahead = trk.sampleAt(v.s + 14);
     const tx = ahead.x - v.pos.x;
     const tz = ahead.z - v.pos.z;
-    v.input.steer = Math.max(-1, Math.min(1, Math.atan2(tx * v.rightX + tz * v.rightZ, tx * v.fwdX + tz * v.fwdZ) * 2));
+    v.input.steer = -Math.max(-1, Math.min(1, Math.atan2(tx * v.rightX + tz * v.rightZ, tx * v.fwdX + tz * v.fwdZ) * 2));
     v.step(1 / 60, trk, { surfGrip: () => 1, weatherGrip: 1 });
   }
   ok(v.speed > 35, `should be fast after 12s, got ${v.speed.toFixed(1)}`);
@@ -198,6 +198,30 @@ t("service worker precache matches disk", () => {
     const rel = "./" + file.slice(root.length + 1).replace(/\\/g, "/");
     ok(list.includes(rel), `source not precached: ${rel}`);
   }
+});
+
+t("steering: pressing right turns the car screen-right", () => {
+  const def = { pts: [[0, 0, -300], [220, 0, -300], [220, 0, 300], [0, 0, 300]], width: 40, surfaces: [], ramps: [] };
+  const trk = buildTrackData(def);
+  const stats = derived({ topSpeed: 280, accel: 6, handling: 5, nitro: 5 }, null);
+  const v = new VehicleCore(stats, true);
+  v.place(trk.total - 60, trk, 0);
+  for (let i = 0; i < 120; i++) {
+    v.input.throttle = 1;
+    v.input.steer = 0;
+    v.step(1 / 60, trk, { surfGrip: () => 1 });
+  }
+  const yawBefore = v.yaw;
+  const speed = Math.abs(v.speed);
+  ok(speed > 8, "rolling before steering test");
+  for (let i = 0; i < 24; i++) {
+    v.input.steer = 1;
+    v.step(1 / 60, trk, { surfGrip: () => 1 });
+  }
+  let dy = v.yaw - yawBefore;
+  while (dy > Math.PI) dy -= Math.PI * 2;
+  while (dy < -Math.PI) dy += Math.PI * 2;
+  ok(dy < -0.04, `right input must decrease yaw (screen-right), got dy=${dy.toFixed(3)}`);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
