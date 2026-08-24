@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { clamp, damp } from "../utils.js";
+import { clamp, damp, smoothstep } from "../utils.js";
 
 const MODES = {
   chase: { dist: 6.8, height: 2.7, lookAhead: 5, fov: 64 },
@@ -33,6 +33,42 @@ export class CameraRig {
     const fx = car.fwdX;
     const fz = car.fwdZ;
     this.pos.set(car.pos.x - fx * m.dist, car.pos.y + m.height, car.pos.z - fz * m.dist);
+  }
+  cinematic(dt, car, k01) {
+    const ease = smoothstep(1 - k01);
+    const ang = Math.PI * 0.8 * (1 - ease);
+    const dist = 7.5 + k01 * 3.5;
+    const height = 1.6 + k01 * 2.2;
+    const ca = Math.cos(ang);
+    const sa = Math.sin(ang);
+    const bx = -car.fwdX * ca + car.rightX * sa;
+    const bz = -car.fwdZ * ca + car.rightZ * sa;
+    this.pos.set(car.pos.x + bx * dist, car.pos.y + height, car.pos.z + bz * dist);
+    this.cam.position.copy(this.pos);
+    this.look.set(car.pos.x + car.fwdX * 1.2, car.pos.y + 0.9, car.pos.z + car.fwdZ * 1.2);
+    this.cam.lookAt(this.look);
+    const fov = 58 + ease * 8;
+    if (Math.abs(this.cam.fov - fov) > 0.05) {
+      this.cam.fov = damp(this.cam.fov, fov, 4, dt);
+      this.cam.updateProjectionMatrix();
+    }
+  }
+  setVictory(on) {
+    this.victory = on;
+    this._vicAngle = 0;
+  }
+  updateVictory(dt, car) {
+    this._vicAngle += dt * 0.55;
+    const r = 7.2;
+    const a = this._vicAngle;
+    this.pos.set(car.pos.x + Math.sin(a) * r, car.pos.y + 2.4, car.pos.z + Math.cos(a) * r);
+    this.cam.position.copy(this.pos);
+    this.look.set(car.pos.x, car.pos.y + 0.7, car.pos.z);
+    this.cam.lookAt(this.look);
+    if (Math.abs(this.cam.fov - 52) > 0.05) {
+      this.cam.fov = damp(this.cam.fov, 52, 3, dt);
+      this.cam.updateProjectionMatrix();
+    }
   }
   update(dt, car, opts) {
     const m = MODES[this.mode];

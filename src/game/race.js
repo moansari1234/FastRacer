@@ -203,14 +203,29 @@ export class Race {
     const geo = new THREE.CapsuleGeometry(0.55, 1.1, 4, 10);
     geo.rotateZ(Math.PI / 2);
     const mat = new THREE.MeshBasicMaterial({ color: 0x37f3ff, transparent: true, opacity: 0.92 });
+    const ringGeo = new THREE.RingGeometry(1.15, 1.7, 24);
     for (let i = 0; i < count; i++) {
       const s = ((i + 0.5) / count) * this.track.total;
       const side = i % 2 === 0 ? -1 : 1;
       const sm = this.track.sampleAt(s);
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(sm.x + sm.nx * side * this.track.halfW * 0.5, sm.y + 1.1, sm.z + sm.nz * side * this.track.halfW * 0.5);
-      this.scene.add(mesh);
-      this.pickups.push({ mesh, x: mesh.position.x, z: mesh.position.z, active: true, respawnT: 0, spin: this.rng() * 6 });
+      const grp = new THREE.Group();
+      grp.position.set(sm.x + sm.nx * side * this.track.halfW * 0.5, sm.y + 0.06, sm.z + sm.nz * side * this.track.halfW * 0.5);
+      grp.rotation.y = Math.atan2(sm.tx, sm.tz) + Math.PI / 2;
+      const cap = new THREE.Mesh(geo, mat);
+      cap.position.y = 1.1;
+      grp.add(cap);
+      const padMat = new THREE.MeshBasicMaterial({
+        color: 0x00e5ff,
+        transparent: true,
+        opacity: 0.45,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const pad = new THREE.Mesh(ringGeo, padMat);
+      pad.rotation.x = -Math.PI / 2;
+      grp.add(pad);
+      this.scene.add(grp);
+      this.pickups.push({ grp, cap, pad: padMat, x: grp.position.x, z: grp.position.z, active: true, respawnT: 0, spin: this.rng() * 6 });
     }
     this.pickupMat = mat;
   }
@@ -226,6 +241,34 @@ export class Race {
   slowmo(duration, scale) {
     this.slowmoT = duration;
     this.slowmoScale = scale;
+  }
+
+  _celebrate() {
+    this.rig.setVictory(true);
+    this.audio.checkpoint();
+    this.hud.notify("FINISH!", "boost");
+    const v = this.player.core;
+    const colors = [
+      [1, 0.45, 0.15], [0, 0.9, 1], [1, 0.82, 0.24],
+      [0.42, 1, 0.55], [1, 0.18, 0.33], [0.49, 0.3, 1]
+    ];
+    for (let i = 0; i < 70; i++) {
+      const c = colors[i % colors.length];
+      this.fxSmoke.emit({
+        x: v.pos.x + (Math.random() - 0.5) * 2,
+        y: v.pos.y + 1.4,
+        z: v.pos.z + (Math.random() - 0.5) * 2,
+        vx: (Math.random() - 0.5) * 9,
+        vy: 6 + Math.random() * 9,
+        vz: (Math.random() - 0.5) * 9,
+        life: 1.6 + Math.random() * 1.2,
+        size: 0.34,
+        r: c[0], g: c[1], b: c[2],
+        alpha: 1,
+        grav: 9,
+        drag: 0.5
+      });
+    }
   }
 
   _handleEvents(car, dt) {
@@ -483,21 +526,35 @@ export class Race {
         pk.respawnT -= dt;
         if (pk.respawnT <= 0) {
           pk.active = true;
-          pk.mesh.visible = true;
+          pk.grp.visible = true;
         }
         continue;
       }
-      pk.mesh.rotation.y = pk.spin;
+      pk.cap.rotation.y = pk.spin;
+      const pulse = 0.3 + Math.abs(Math.sin(pk.spin * 1.5)) * 0.3;
+      pk.pad.opacity = pulse;
       const dx = pk.x - p.pos.x;
       const dz = pk.z - p.pos.z;
-      if (dx * dx + dz * dz < 6.2 && Math.abs(p.pos.y - pk.mesh.position.y) < 3) {
+      if (dx * dx + dz * dz < 6.2 && Math.abs(p.pos.y - pk.grp.position.y) < 3) {
         pk.active = false;
-        pk.mesh.visible = false;
+        pk.grp.visible = false;
         pk.respawnT = 10;
         p.addMeter(28);
         this.stats.pickups++;
         this.audio.pickup();
         this.hud.notify("NITRO PICKUP", "minor");
+        for (let k = 0; k < 10; k++) {
+          this.fxAdd.emit({
+            x: pk.x, y: p.pos.y + 0.8, z: pk.z,
+            vx: (Math.random() - 0.5) * 8,
+            vy: Math.random() * 7,
+            vz: (Math.random() - 0.5) * 8,
+            life: 0.4 + Math.random() * 0.3,
+            size: 0.4,
+            r: 0.2, g: 0.95, b: 1,
+            grav: 12, drag: 1.2
+          });
+        }
       }
     }
   }
@@ -514,6 +571,17 @@ export class Race {
     this.positions.forEach((c, i) => {
       c.rank = i + 1;
     });
+    if (this.state === "run" && this.player.rank && this._lastRank) {
+      const prev = this._lastRank;
+      const now = this.player.rank;
+      if (now < prev) {
+        this.hud.notify(now === 1 ? "YOU TOOK THE LEAD!" : `OVERTAKE — P${now}`, "good");
+        this.audio.checkpoint();
+      } else if (now > prev) {
+        this.hud.notify(`P${now} — FIGHT BACK`, "bad");
+      }
+    }
+    if (this.player.rank) this._lastRank = this.player.rank;
   }
 
   _eliminationTick(dt) {
@@ -693,8 +761,8 @@ export class Race {
           this.finishedOrder.push(car);
           if (car.isPlayer) {
             this.state = "outro";
-            this.stateT = 2.3;
-            this.audio.finish(true);
+            this.stateT = 2.6;
+            this._celebrate();
           } else {
             this.hud.notify(`${car.name} FINISHED`, "minor");
           }
@@ -763,7 +831,13 @@ export class Race {
       this.headlight.target.updateMatrixWorld();
     }
     this.env.update(dt, this.player.core.pos);
-    this.rig.update(dtReal, this.player.core, { shakeEnabled: this.settings.shake });
+    if (this.rig.victory) {
+      this.rig.updateVictory(dtReal, this.player.core);
+    } else if (this.state === "countdown") {
+      this.rig.cinematic(dtReal, this.player.core, clamp(this.stateT / 3.7, 0, 1));
+    } else {
+      this.rig.update(dtReal, this.player.core, { shakeEnabled: this.settings.shake });
+    }
 
     this.hudT -= dtReal;
     if (this.hudT <= 0) {
