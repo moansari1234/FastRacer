@@ -11,22 +11,37 @@ export class CameraRig {
   constructor(camera) {
     this.cam = camera;
     this.mode = "chase";
-    this.shakeAmp = 0;
+    this.trauma = 0;
     this.fovKick = 0;
     this.pos = new THREE.Vector3(0, 5, -10);
     this.look = new THREE.Vector3();
     this._tmp = new THREE.Vector3();
     this.slowmo = 0;
+    this._t = Math.random() * 100;
   }
   cycle() {
     this.mode = this.mode === "chase" ? "far" : this.mode === "far" ? "hood" : "chase";
     return this.mode;
   }
   shake(amt) {
-    this.shakeAmp = Math.min(1.4, this.shakeAmp + amt);
+    this.trauma = Math.min(1, this.trauma + amt);
   }
   kick(amt) {
     this.fovKick = Math.min(18, this.fovKick + amt);
+  }
+  updateTrauma(dt) {
+    this.trauma = Math.max(0, this.trauma - dt * 1.6);
+    this._t += dt * 60;
+  }
+  applyShake(s) {
+    const t2 = this.trauma * this.trauma;
+    if (t2 < 0.0004 || !s) return;
+    const n1 = Math.sin(this._t * 12.9898) * 43758.5453;
+    const n2 = Math.sin(this._t * 78.233 + 11.7) * 12345.6789;
+    const n3 = Math.sin(this._t * 39.425 + 5.1) * 9876.54321;
+    this.cam.position.x += ((n1 % 1) - 0.5) * 2 * t2 * 0.55;
+    this.cam.position.y += ((n2 % 1) - 0.5) * 2 * t2 * 0.38;
+    this.cam.position.z += ((n3 % 1) - 0.5) * 2 * t2 * 0.55;
   }
   snapBehind(car) {
     const m = MODES[this.mode];
@@ -105,12 +120,9 @@ export class CameraRig {
       car.pos.z + fz * m.lookAhead + car.vz * 0.12
     );
     this.cam.position.copy(this.pos);
-    if (opts && opts.shakeEnabled && this.shakeAmp > 0.001) {
-      const s = this.shakeAmp;
-      this.cam.position.x += (Math.random() - 0.5) * s * 0.5;
-      this.cam.position.y += (Math.random() - 0.5) * s * 0.35;
-      this.cam.position.z += (Math.random() - 0.5) * s * 0.5;
-      this.shakeAmp *= Math.exp(-5 * dt);
+    if (opts && opts.shakeEnabled) {
+      this.updateTrauma(dt);
+      this.applyShake(true);
     }
     this.cam.lookAt(this.look);
     this.cam.rotation.z += clamp(-car.visRoll * 0.55 - car.vLat * 0.004, -0.09, 0.09);

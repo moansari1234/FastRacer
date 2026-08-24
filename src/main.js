@@ -6,6 +6,8 @@ import { HUD } from "./ui/hud.js";
 import { Screens } from "./ui/screens.js";
 import { Race } from "./game/race.js";
 import { buildCarMesh, syncCarView } from "./render/vehicleView.js";
+import { RenderPipeline } from "./render/postfx.js";
+import { initEnvironment } from "./render/materials.js";
 import { CAR_MAP, derived } from "./data/cars.js";
 import { TRACK_MAP, DIFFICULTIES, CAREER } from "./data/tracks.js";
 import { clamp } from "./utils.js";
@@ -44,6 +46,9 @@ class Game {
     this.renderer.shadowMap.enabled = this.quality === "high";
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._applyPixelRatio();
+    this.pipeline = new RenderPipeline(this.renderer, this.quality);
+    initEnvironment(this.renderer, this.menuScene);
+    this.menuScene.environmentIntensity = 0.7;
 
     this.menuScene = this._buildMenuScene();
     this.menuCam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
@@ -312,6 +317,7 @@ class Game {
       rim.position.set(-3.5, 1.5, -3);
       this.garageScene.add(rim);
       this.garageCam = new THREE.PerspectiveCamera(40, 1.5, 0.1, 50);
+      initEnvironment(this.garageRenderer, this.garageScene);
     }
     container.innerHTML = "";
     container.appendChild(this.garageRenderer.domElement);
@@ -393,6 +399,7 @@ class Game {
       };
     }
     this.race = new Race(cfg);
+    initEnvironment(this.renderer, this.race.scene);
     this.hud.buildMinimap(this.race.track);
     this.lastRaceCfg = cfg;
     this.state = "race";
@@ -460,6 +467,7 @@ class Game {
 
   _onResize() {
     this._applyPixelRatio();
+    this.pipeline.resize(innerWidth, innerHeight);
     this.menuCam.aspect = innerWidth / innerHeight;
     this.menuCam.updateProjectionMatrix();
     if (this.race) {
@@ -481,17 +489,19 @@ class Game {
 
     if (this.state === "race" && this.race && !this.paused) {
       this.race.update(dt);
-      this.renderer.render(this.race.scene, this.race.camera);
-      this.hud.setFps(this.fpsAvg);
+      const v = this.race.player.core;
+      this.pipeline.update(clamp(Math.abs(v.speed) / v.stats.maxSpeed, 0, 1), v.boostLevel);
+      this.pipeline.render(this.race.scene, this.race.camera);
+      this.hud.setFps(this.fpsAvg, this.renderer.info);
     } else if ((this.state === "race" && this.race && this.paused) || (this.state === "results" && this.race)) {
       if (this.state === "results") this.race.update(dt);
-      this.renderer.render(this.race.scene, this.race.camera);
+      this.pipeline.render(this.race.scene, this.race.camera);
     } else {
       if (this.showcaseGroup) {
         this.showcaseGroup.group.rotation.y += dt * 0.55;
       }
       this.menuRing.rotation.z += dt * 0.4;
-      this.renderer.render(this.menuScene, this.menuCam);
+      this.pipeline.render(this.menuScene, this.menuCam);
       if (this.garageView && this.garageRenderer && this.showcaseGroup) {
         const g = this.showcaseGroup;
         g.group.rotation.y += dt * 0.35;

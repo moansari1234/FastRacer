@@ -101,6 +101,8 @@ export class Race {
 
     this.nearMissCooldown = new Map();
     this.driftChain = { active: false, dist: 0 };
+    this.hitstop = 0;
+    this.squash = 1;
     this.onSaveGhost = cfg.onSaveGhost || null;
     this.audio = cfg.audio;
     this.input = cfg.input;
@@ -283,15 +285,27 @@ export class Race {
         this._burstSparks(ev.x, v.pos.y + 0.4, ev.z, Math.min(14, ev.impact));
         if (car.isPlayer) {
           this.audio.collision(clamp(ev.impact / 16, 0.2, 1));
-          this.rig.shake(clamp(ev.impact / 24, 0.08, 0.6));
+          if (ev.scrape) {
+            this.rig.shake(0.12);
+            this.audio.scrape();
+          } else {
+            this.rig.shake(clamp(ev.impact / 22, 0.3, 0.65));
+            this.audio.collision(clamp(ev.impact / 16, 0.4, 1));
+            if (ev.impact > 8) this.hitstop = Math.max(this.hitstop, 0.07);
+          }
         }
       } else if (ev.type === "land") {
-        if (ev.air > 1.05 && car.isPlayer) {
-          this.slowmo(0.5, 0.4);
-          this.rig.kick(6);
-          this.audio.collision(0.35);
-        } else if (car.isPlayer) {
-          this.audio.collision(0.18);
+        if (car.isPlayer) {
+          this.squash = 0.87 - Math.min(0.08, ev.air * 0.04);
+          if (ev.air > 1.05) {
+            this.slowmo(0.5, 0.4);
+            this.rig.kick(6);
+            this.rig.shake(0.3);
+            this.audio.collision(0.35);
+          } else {
+            this.audio.collision(0.18);
+            this.rig.shake(Math.min(0.3, ev.air * 0.25));
+          }
         }
         this._dustBurst(v.pos.x, v.pos.y, v.pos.z, 8);
         if (ev.did360) {
@@ -308,7 +322,10 @@ export class Race {
         }
         this._dustBurst(v.pos.x, v.pos.y, v.pos.z, 14);
       } else if (ev.type === "launch") {
-        if (car.isPlayer && ev.vy > 6) this.rig.kick(4);
+        if (car.isPlayer) {
+          this.squash = 1.13;
+          if (ev.vy > 6) this.rig.kick(4);
+        }
       }
     }
     v.events.length = 0;
@@ -501,8 +518,10 @@ export class Race {
         this._burstSparks(hit.mx, A.pos.y + 0.5, hit.mz, Math.min(16, hit.impact));
         for (const c of [carA, carB]) {
           if (c.isPlayer) {
-            this.audio.collision(clamp(hit.impact / 14, 0.25, 1));
-            this.rig.shake(clamp(hit.impact / 20, 0.1, 0.7));
+            const mag = clamp(hit.impact / 14, 0.25, 1);
+            this.audio.collision(mag);
+            this.rig.shake(mag * 0.6);
+            if (hit.impact > 9) this.hitstop = Math.max(this.hitstop, 0.05 + mag * 0.04);
           }
         }
         const attacker = Math.abs(A.speed) > Math.abs(B.speed) ? carA : carB;
@@ -717,7 +736,13 @@ export class Race {
     } else {
       this.timeScale = damp(this.timeScale, 1, 5, dtReal);
     }
-    const dt = dtReal * this.timeScale;
+    let effScale = this.timeScale;
+    if (this.hitstop > 0) {
+      this.hitstop -= dtReal;
+      effScale *= 0.06;
+    }
+    const dt = dtReal * effScale;
+    this.audio.setDuck(this.hitstop > 0 ? 0.5 : 1);
 
     if (this.state === "countdown") {
       this.stateT -= dtReal;
@@ -790,6 +815,14 @@ export class Race {
         this.stats.topSpeed = Math.max(this.stats.topSpeed, car.isPlayer ? Math.abs(v.speed) : 0);
         syncCarView(car.view, v, dt);
         updateCarCosmetics(car.view, v);
+        if (car.isPlayer) {
+          this.squash += (1 - this.squash) * Math.min(1, dt * 7);
+          car.view.body.scale.set(
+            1 + (1 - this.squash) * 0.45,
+            this.squash,
+            1 + (1 - this.squash) * 0.2
+          );
+        }
         if (!car.isPlayer && !car.eliminated) {
           if (v.drifting) v.addMeter(dt * 7 * v.stats.nitroGain);
           v.addMeter(dt * 0.9);

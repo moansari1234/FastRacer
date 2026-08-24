@@ -20,6 +20,7 @@ function silentAudio() {
   return {
     collision: noop,
     scrape: noop,
+    setDuck: noop,
     nitroStart: noop,
     nearMiss: noop,
     knockdown: noop,

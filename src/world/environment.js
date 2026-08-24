@@ -46,19 +46,32 @@ export class Environment {
     scene.background = new THREE.Color(pal.fog);
     scene.fog = new THREE.Fog(pal.fog, 60, pal.fogFar);
 
-    this.skyGeo = new THREE.SphereGeometry(950, 24, 14);
-    const cols = [];
-    const posAttr = this.skyGeo.attributes.position;
-    for (let i = 0; i < posAttr.count; i++) {
-      const t = Math.max(0, Math.min(1, (posAttr.getY(i) / 950 + 1) / 2));
-      const top = new THREE.Color(pal.top);
-      const bot = new THREE.Color(pal.bot);
-      const c = top.lerp(bot, Math.pow(t, 0.8));
-      cols.push(c.r, c.g, c.b);
-    }
-    this.skyGeo.setAttribute("color", new THREE.Float32BufferAttribute(cols, 3));
-    this.skyMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false });
+    this.skyGeo = new THREE.SphereGeometry(950, 32, 16);
+    this.skyUniforms = {
+      uTop: { value: new THREE.Color(pal.top) },
+      uHorizon: { value: new THREE.Color(pal.bot) },
+      uSunColor: { value: new THREE.Color(pal.sun) },
+      uSunDir: { value: new THREE.Vector3(0.45, 0.5, 0.35).normalize() }
+    };
+    this.skyMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide,
+      depthWrite: false,
+      fog: false,
+      uniforms: this.skyUniforms,
+      vertexShader: `varying vec3 vDir;
+        void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `varying vec3 vDir;
+        uniform vec3 uTop, uHorizon, uSunColor, uSunDir;
+        void main(){
+          float h = clamp(vDir.y * 0.5 + 0.5, 0.0, 1.0);
+          vec3 col = mix(uHorizon, uTop, pow(h, 0.6));
+          float d = clamp(dot(normalize(vDir), normalize(uSunDir)), 0.0, 1.0);
+          col += uSunColor * (pow(d, 900.0) * 2.2 + pow(d, 8.0) * 0.28);
+          gl_FragColor = vec4(col, 1.0);
+        }`
+    });
     this.sky = new THREE.Mesh(this.skyGeo, this.skyMat);
+    this.sky.frustumCulled = false;
     scene.add(this.sky);
 
     this.hemi = new THREE.HemisphereLight(pal.hemi, pal.gnd, 0.85);
@@ -77,6 +90,9 @@ export class Environment {
     }
     scene.add(this.sun);
     scene.add(this.sun.target);
+    this.rim = new THREE.DirectionalLight(pal.hemi, pal.sunInt * 0.35);
+    this.rim.position.set(-160, 120, -180);
+    scene.add(this.rim);
 
     if (pal.star) {
       const starGeo = new THREE.BufferGeometry();
@@ -92,14 +108,6 @@ export class Environment {
       scene.add(this.stars);
     }
 
-    this.sunDisc = new THREE.Mesh(
-      new THREE.CircleGeometry(pal.sunInt > 0.8 ? 46 : 22, 20),
-      new THREE.MeshBasicMaterial({ color: pal.sun, fog: false })
-    );
-    const sunDir = new THREE.Vector3(0.5, 0.62, 0.35).normalize();
-    this.sunDisc.position.copy(sunDir).multiplyScalar(880);
-    this.sunDisc.lookAt(0, 0, 0);
-    scene.add(this.sunDisc);
 
     this.ground = new THREE.Mesh(
       new THREE.CircleGeometry(1500, 40),
@@ -378,7 +386,6 @@ export class Environment {
   update(dt, focus) {
     this.sky.position.set(focus.x, 0, focus.z);
     if (this.stars) this.stars.position.set(focus.x, 0, focus.z);
-    this.sunDisc.position.set(focus.x + 440, 550, focus.z + 310);
     this.ground.position.x = focus.x;
     this.ground.position.z = focus.z;
     this.sun.position.set(focus.x + 140, 220, focus.z + 90);
@@ -444,13 +451,11 @@ export class Environment {
       this.wMat.dispose();
       this.scene.remove(this.weatherPts);
     }
-    this.sunDisc.geometry.dispose();
-    this.sunDisc.material.dispose();
     this.scene.remove(this.sky);
     this.scene.remove(this.sun);
     this.scene.remove(this.sun.target);
+    this.scene.remove(this.rim);
     this.scene.remove(this.hemi);
-    this.scene.remove(this.sunDisc);
     this.scene.remove(this.ground);
   }
 }

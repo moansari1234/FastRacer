@@ -179,11 +179,19 @@ export class AudioManager {
       else e.set(0, 0, 0, 0.016);
     }
   }
+  _jit() {
+    return 1 + (Math.random() - 0.5) * 0.12;
+  }
+  setDuck(v) {
+    if (!this.ctx) return;
+    this.musicBus.gain.setTargetAtTime(this.settings.music * 0.5 * v, this.ctx.currentTime, 0.05);
+  }
   _blip(type, f0, f1, dur, vol, bus) {
     if (!this.ctx) return;
     const c = this.ctx;
     const o = c.createOscillator();
     o.type = type;
+    o.playbackRate.value = this._jit();
     const g = c.createGain();
     o.frequency.setValueAtTime(f0, c.currentTime);
     if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), c.currentTime + dur);
@@ -200,6 +208,7 @@ export class AudioManager {
     const src = c.createBufferSource();
     src.buffer = this.noiseBuf;
     src.loop = true;
+    src.playbackRate.value = this._jit();
     const f = c.createBiquadFilter();
     f.type = filterType;
     f.frequency.value = freq;

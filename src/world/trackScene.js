@@ -128,6 +128,42 @@ export function buildTrackScene(track, def, quality) {
     group.add(wm);
   }
 
+  const postGeo = new THREE.BoxGeometry(0.14, accent.h * 2.4, 0.14);
+  const postSpacing = Math.max(8, Math.floor(track.n / Math.max(40, track.n / 6)));
+  const postCount = Math.floor(track.n / postSpacing) * 2;
+  if (postCount > 0) {
+    const posts = new THREE.InstancedMesh(postGeo, wallMat, postCount);
+    const m4 = new THREE.Matrix4();
+    let pi = 0;
+    for (let i = 0; i < track.n; i += postSpacing) {
+      for (const side of [1, -1]) {
+        if (pi >= postCount) break;
+        const ox = track.px[i] + track.nx[i] * side * (halfW + 0.78);
+        const oz = track.pz[i] + track.nz[i] * side * (halfW + 0.78);
+        m4.makeTranslation(ox, track.py[i] + accent.h * 1.2, oz);
+        posts.setMatrixAt(pi++, m4);
+      }
+    }
+    posts.count = pi;
+    posts.instanceMatrix.needsUpdate = true;
+    group.add(posts);
+  }
+
+  const stripY = 0.11;
+  const neonEdgeMat = def.theme === "city" || def.theme === "future" || def.theme === "snow"
+    ? new THREE.MeshBasicMaterial({ color: new THREE.Color(def.theme === "future" ? "#7c4dff" : "#00e5ff"), transparent: true, opacity: 0.85 })
+    : null;
+  if (neonEdgeMat) {
+    const stripW = 0.18;
+    for (const side of [1, -1]) {
+      const o1 = side > 0 ? halfW - 0.28 : -halfW + 0.28;
+      const o2 = o1 + side * stripW * 2;
+      const sg = ribbon(track, o1, o2, stripY, 9, null);
+      const sm = new THREE.Mesh(sg, neonEdgeMat);
+      group.add(sm);
+    }
+  }
+
   const arches = [];
   const pillarGeo = new THREE.BoxGeometry(0.8, 6, 0.8);
   const beamGeo = new THREE.BoxGeometry(halfW * 2 + 3, 0.9, 0.9);
@@ -149,6 +185,17 @@ export function buildTrackScene(track, def, quality) {
     const glow = new THREE.Mesh(new THREE.BoxGeometry(halfW * 2 + 2, 0.25, 0.2), neonMat);
     glow.position.y = 5.45;
     a.add(glow);
+    const lamps = new THREE.InstancedMesh(
+      new THREE.SphereGeometry(0.16, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffe9b0 }),
+      6
+    );
+    const lm = new THREE.Matrix4();
+    for (let li = 0; li < 6; li++) {
+      lm.makeTranslation(-halfW + (li / 5) * halfW * 2, 5.75, 0);
+      lamps.setMatrixAt(li, lm);
+    }
+    a.add(lamps);
     group.add(a);
     arches.push(a);
   }

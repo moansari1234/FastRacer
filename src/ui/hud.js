@@ -167,10 +167,14 @@ export class HUD {
     setTimeout(() => { this.el.flash.style.opacity = "0"; }, 90);
   }
 
-  setFps(fps) {
+  setFps(fps, info) {
     if (!this.opts.settings.fps) return;
     this.el.fps.classList.remove("hidden");
-    this.el.fps.textContent = fps.toFixed(0) + " FPS";
+    let txt = fps.toFixed(0) + " FPS";
+    if (info && info.render) {
+      txt += ` · ${info.render.calls} calls · ${(info.render.triangles / 1000).toFixed(0)}k tris`;
+    }
+    this.el.fps.textContent = txt;
   }
 
   setState(s) {
