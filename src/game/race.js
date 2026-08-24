@@ -100,6 +100,7 @@ export class Race {
     this.recording = this.mode === "timeattack";
 
     this.nearMissCooldown = new Map();
+    this.driftChain = { active: false, dist: 0 };
     this.onSaveGhost = cfg.onSaveGhost || null;
     this.audio = cfg.audio;
     this.input = cfg.input;
@@ -159,6 +160,9 @@ export class Race {
       const pers = makePersonality(prng, i);
       pers.name = AI_NAMES[i % AI_NAMES.length];
       const stats = this.cfg.statProvider(spec);
+      const bal = clamp(rating(this.cfg.carSpec) / Math.max(1, rating(spec)), 0.88, 1.14);
+      stats.maxSpeed *= bal;
+      stats.accelRate *= bal;
       const car = this._makeCar(spec, stats, false, i + 1, pers.name);
       const driver = new AIDriver(car.core, this.track, pers, diffCfg, (this.cfg.seed || 5) * 31 + i);
       driver.car = car;
@@ -168,7 +172,8 @@ export class Race {
 
   _grid() {
     const total = this.track.total;
-    this.cars.forEach((car, i) => {
+    const order = [...this.cars.filter((c) => !c.isPlayer), this.player];
+    order.forEach((car, i) => {
       const row = Math.floor(i / 2);
       const col = i % 2 === 0 ? -1 : 1;
       const s = total - 7 - row * 7;
@@ -687,7 +692,22 @@ export class Race {
     if (v.nitroActive && !this.modifiers.infNitro) {
       v.meter -= NITRO_DRAIN[v.boostLevel] * dt;
     }
-    if (v.drifting) v.addMeter(dt * 9.5 * v.stats.nitroGain);
+    if (v.drifting) {
+      v.addMeter(dt * 9.5 * v.stats.nitroGain);
+      if (!this.driftChain.active) this.driftChain = { active: true, dist: 0 };
+      this.driftChain.dist += Math.abs(v.speed) * dt;
+    } else if (this.driftChain.active) {
+      const d = this.driftChain.dist;
+      if (d > 20) {
+        const bonus = Math.min(30, d * 0.06);
+        v.addMeter(bonus);
+        this.hud.notify(`DRIFT ${Math.round(d)}m  +${Math.round(bonus)} NITRO`, "minor");
+      }
+      this.driftChain.active = false;
+    }
+    if (!v.grounded && v.airTime > 0.4) {
+      // air chain feeds landing bonus handled by core events
+    }
   }
 
   update(dtReal, hudCb) {
@@ -901,6 +921,7 @@ export class Race {
       time: this.raceTime,
       damage: v.damage,
       drifting: v.drifting,
+      driftMeters: v.drifting ? this.driftChain.dist : 0,
       airborne: !v.grounded,
       wrongWay: v.wrongWayT > 1.2,
       speed01: clamp(Math.abs(v.speed) / v.stats.maxSpeed, 0, 1),

@@ -243,7 +243,7 @@ export class HUD {
     if (s.drifting) {
       c.fillStyle = "#ffd23e";
       c.font = "bold 13px Arial";
-      c.fillText("DRIFT", cx, cy + 26);
+      c.fillText(s.driftMeters > 6 ? `DRIFT ${Math.round(s.driftMeters)}m` : "DRIFT", cx, cy + 26);
     } else if (s.airborne) {
       c.fillStyle = "#7cf7ff";
       c.font = "bold 13px Arial";

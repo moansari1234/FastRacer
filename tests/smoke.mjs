@@ -15,6 +15,8 @@ function makeCtxStub() {
   return stub;
 }
 
+import { makeCfg } from "./helpers.mjs";
+
 globalThis.document = {
   createElement(tag) {
     return {
@@ -59,95 +61,14 @@ function ok(cond, msg) {
   if (!cond) throw new Error(msg || "cond failed");
 }
 
-function silentAudio() {
-  const noop = () => {};
-  return {
-    collision: noop,
-    scrape: noop,
-    nitroStart: noop,
-    nearMiss: noop,
-    knockdown: noop,
-    checkpoint: noop,
-    countdown: noop,
-    pickup: noop,
-    uiClick: noop,
-    buy: noop,
-    finish: noop,
-    eliminated: noop,
-    thunder: noop,
-    updateEngines: noop,
-    setSkid: noop,
-    setWind: noop,
-    setIntensity: noop,
-    startMusic: noop,
-    stopMusic: noop
-  };
-}
-
-function stubInput() {
-  return {
-    enabled: true,
-    keys: new Set(),
-    read: () => ({ throttle: 1, brake: 0, steer: 0, drift: false }),
-    consumeNitroTap: () => 0,
-    consumeShockTap: () => 0,
-    clearTaps() {},
-    setVirtual() {}
-  };
-}
-
-function stubHud() {
-  return {
-    notify() {},
-    showCountdown() {},
-    setState() {},
-    flash() {},
-    buildMinimap() {},
-    reset() {},
-    setFps() {}
-  };
-}
-
-function makeCfg(over) {
-  const spec = CAR_MAP.get("vento");
-  return Object.assign(
-    {
-      mode: "race",
-      trackDef: TRACK_MAP.get("cape"),
-      laps: 2,
-      rivals: 3,
-      diffKey: "easy",
-      diffCfg: DIFFICULTIES.easy,
-      modifiers: {},
-      target: {},
-      careerId: null,
-      rewardCar: null,
-      carSpec: spec,
-      derivedStats: derived(spec, null),
-      customization: { paint: spec.color, rim: "#181c22", spoiler: "stock" },
-      statProvider: (s) => derived(s, null),
-      quality: "low",
-      particleScale: 0.4,
-      aspect: 16 / 9,
-      seed: 777,
-      settings: { cam: "chase", shake: true, speedLines: true, fps: false },
-      audio: silentAudio(),
-      input: stubInput(),
-      hud: stubHud(),
-      isTouch: false,
-      touchDrive: false,
-      ghostData: null,
-      onSaveGhost: null,
-      onFinished: null
-    },
-    over
-  );
-}
-
 t("race constructs and runs countdown then driving", () => {
-  const race = new Race(makeCfg({}));
+  const race = new Race(makeCfg({ modifiers: { noTraffic: true } }));
   ok(race.cars.length === 4, "player + 3 rivals");
   ok(race.state === "countdown", "starts in countdown");
+  const behindDist = (c) => race.track.total - c.core.s;
+  const pB = behindDist(race.player);
+  const rB = race.cars.filter((c) => !c.isPlayer).map(behindDist);
+  ok(pB >= Math.max(...rB) - 0.01 && pB > Math.min(...rB), "player starts from the back of the grid");
   for (let i = 0; i < 260; i++) race.update(1 / 60);
   ok(race.state === "run", "reached run state");
   let maxSpeed = 0;
@@ -155,10 +76,34 @@ t("race constructs and runs countdown then driving", () => {
     race.update(1 / 60);
     maxSpeed = Math.max(maxSpeed, Math.abs(race.player.core.speed));
   }
-  ok(maxSpeed > 30, `player built speed: ${maxSpeed.toFixed(1)}`);
+  ok(maxSpeed > 30 && maxSpeed < 42, `D-class car accelerated believably: ${maxSpeed.toFixed(1)} m/s`);
   ok(race.positions.length === 4, "positions computed");
   ok(race.player.core.progress > 50, "progress advanced");
   race.dispose();
+});
+
+t("class separation — S-class decisively faster than D-class", () => {
+  const buildAndDrive = (carId, seconds) => {
+    const spec = CAR_MAP.get(carId);
+    const race = new Race(makeCfg({
+      modifiers: { noTraffic: true },
+      rivals: 0,
+      carSpec: spec,
+      derivedStats: derived(spec, null)
+    }));
+    for (let i = 0; i < 260; i++) race.update(1 / 60);
+    let maxSpeed = 0;
+    for (let i = 0; i < 60 * seconds; i++) {
+      race.update(1 / 60);
+      maxSpeed = Math.max(maxSpeed, Math.abs(race.player.core.speed));
+    }
+    race.dispose();
+    return maxSpeed;
+  };
+  const dSpeed = buildAndDrive("vento", 10);
+  const sSpeed = buildAndDrive("spectre", 10);
+  ok(dSpeed > 28 && dSpeed < 44, `D-class believable: ${dSpeed.toFixed(1)} m/s`);
+  ok(sSpeed > dSpeed + 12, `S-class separation: ${sSpeed.toFixed(1)} vs ${dSpeed.toFixed(1)} m/s`);
 });
 
 t("AI opponents move and rank", () => {
@@ -230,3 +175,5 @@ t("modifiers infNitro keeps meter full", () => {
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
+
+export { makeCfg };

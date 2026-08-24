@@ -159,7 +159,7 @@ export class VehicleCore {
       let accel = 0;
       if (throttle > 0) {
         const r01 = clamp(vFwd / cap, 0, 1);
-        const curve = 1.14 - 0.9 * r01 * r01;
+        const curve = 1.14 - 0.62 * r01 * r01;
         accel += st.accelRate * curve * throttle;
       }
       accel += bonusAccel;

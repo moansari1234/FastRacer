@@ -19,7 +19,7 @@ export function derived(spec, upgrades) {
     nitro,
     maxSpeed: topSpeed / 3.6,
     accelRate: 27.8 / Math.max(2.0, accel),
-    dragK: (0.24 * (27.8 / Math.max(2.0, accel))) / Math.pow(topSpeed / 3.6, 2),
+    dragK: (0.52 * (27.8 / Math.max(2.0, accel))) / Math.pow(topSpeed / 3.6, 2),
     grip: 2.05 + handling * 0.155,
     steerResp: 5.5 + handling * 0.55,
     nitroPower: 0.75 + nitro * 0.075,
