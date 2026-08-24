@@ -1,0 +1,11 @@
+{
+  "name": "nitro-apex",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Arcade racing game inspired by Asphalt 9 - Three.js / WebGL",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "dev:node": "npx --yes serve -l 8000 .",
+    "test": "node --import ./tests/register.mjs tests/run.mjs && node --import ./tests/register.mjs tests/smoke.mjs"
+  }
+}

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NITRO APEX — Arcade Racing</title>
+<link rel="stylesheet" href="./css/style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="screens-root"></div>
+<div id="hud"></div>
+<div id="boot">
+  <div class="boot-inner">
+    <h1><em>NITRO</em> APEX</h1>
+    <p>LEGENDS OF ARCADE SPEED</p>
+    <button id="boot-btn">TAP / CLICK TO START</button>
+    <p class="hint">WASD / Arrows drive &middot; SPACE drift &middot; N or SHIFT nitro &middot; Q shockwave &middot; C camera &middot; R reset &middot; ESC pause</p>
+  </div>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
